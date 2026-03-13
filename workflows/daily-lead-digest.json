@@ -1,0 +1,73 @@
+{
+  "name": "Daily Lead Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "20000000-0000-0000-0000-000000000001",
+      "name": "Daily Schedule 9AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {"__rl": true, "value": "appBasePlaceholder", "mode": "id"},
+        "table": {"__rl": true, "value": "tblLeadsPlaceholder", "mode": "id"},
+        "filterByFormula": "{Status} = 'digest_pending'"
+      },
+      "id": "20000000-0000-0000-0000-000000000002",
+      "name": "Query Pending Leads",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const leads = $input.all();\nif (leads.length === 0) {\n  return [{ json: { count: 0, text: 'ℹ️ No pending leads for today\\'s digest.' } }];\n}\n\nlet summary = `📋 *DAILY LEAD DIGEST* (${leads.length} leads)\\n\\n`;\nleads.forEach((l, i) => {\n  const j = l.json;\n  summary += `${i+1}. *${j.Name || 'Unknown'}* (${j.Intent || 'General'}) — ${j.Budget || 'No budget'}\\n   ${j.Summary || 'No summary'}\\n\\n`;\n});\n\nreturn [{ json: { count: leads.length, text: summary } }];"
+      },
+      "id": "20000000-0000-0000-0000-000000000003",
+      "name": "Format Digest Markdown",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_MANAGER_CHAT_ID }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "20000000-0000-0000-0000-000000000004",
+      "name": "Telegram Dispatch Digest",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "Daily Schedule 9AM": {
+      "main": [[{"node": "Query Pending Leads", "type": "main", "index": 0}]]
+    },
+    "Query Pending Leads": {
+      "main": [[{"node": "Format Digest Markdown", "type": "main", "index": 0}]]
+    },
+    "Format Digest Markdown": {
+      "main": [[{"node": "Telegram Dispatch Digest", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

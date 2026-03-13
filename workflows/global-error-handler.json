@@ -1,0 +1,58 @@
+{
+  "name": "Global Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "30000000-0000-0000-0000-000000000001",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_MANAGER_CHAT_ID }}",
+        "text": "=⚠️ *PIPELINE EXECUTION FAILURE*\n\n*Workflow:* {{ $json.workflow.name }}\n*Execution ID:* `{{ $json.execution.id }}`\n*Error Node:* `{{ $json.execution.lastNodeExecuted }}`\n*Error Message:* {{ $json.execution.error.message }}\n*Time:* {{ new Date().toISOString() }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "30000000-0000-0000-0000-000000000002",
+      "name": "Telegram Failure Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {"__rl": true, "value": "sheetDocPlaceholder", "mode": "id"},
+        "sheetName": {"__rl": true, "value": "ExecutionLogs", "mode": "name"},
+        "fieldsUi": {
+          "fieldValues": [
+            {"fieldId": "ExecutionID", "fieldValue": "={{ $json.execution.id }}"},
+            {"fieldId": "Status", "fieldValue": "FAILED"},
+            {"fieldId": "ErrorMessage", "fieldValue": "={{ $json.execution.error.message }}"},
+            {"fieldId": "Timestamp", "fieldValue": "={{ new Date().toISOString() }}"}
+          ]
+        }
+      },
+      "id": "30000000-0000-0000-0000-000000000003",
+      "name": "Log Failure to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [[{"node": "Telegram Failure Alert", "type": "main", "index": 0}]]
+    },
+    "Telegram Failure Alert": {
+      "main": [[{"node": "Log Failure to Sheets", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

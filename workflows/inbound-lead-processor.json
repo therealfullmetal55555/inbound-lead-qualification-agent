@@ -1,0 +1,146 @@
+{
+  "name": "Inbound Lead Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "10000000-0000-0000-0000-000000000001",
+      "name": "Webhook Form Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 240]
+    },
+    {
+      "parameters": {
+        "updates": ["message"]
+      },
+      "id": "10000000-0000-0000-0000-000000000002",
+      "name": "Telegram Inbound Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 440]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalize Inbound Webhook & Telegram Payloads\nconst item = $input.first().json;\n\nlet email = item.email || (item.body && item.body.email) || null;\nlet name = item.name || (item.body && item.body.name) || (item.message && item.message.from && `${item.message.from.first_name || ''} ${item.message.from.last_name || ''}`.trim()) || 'Unknown Lead';\nlet message = item.message_text || (item.body && item.body.message) || (item.message && item.message.text) || '';\nlet telegramId = item.telegram_id || (item.message && item.message.from && item.message.from.id) || null;\nlet source = telegramId ? 'telegram' : 'web_form';\n\nif (email) email = email.toLowerCase().trim();\n\nreturn [{\n  json: {\n    lead_id: 'LEAD_' + Date.now(),\n    name,\n    email,\n    telegram_id: telegramId,\n    message,\n    source,\n    received_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "10000000-0000-0000-0000-000000000003",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 340]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {"__rl": true, "value": "appBasePlaceholder", "mode": "id"},
+        "table": {"__rl": true, "value": "tblLeadsPlaceholder", "mode": "id"},
+        "filterByFormula": "OR({Email} = '{{ $json.email }}', {TelegramID} = '{{ $json.telegram_id }}')"
+      },
+      "id": "10000000-0000-0000-0000-000000000004",
+      "name": "Airtable Deduplication Search",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [680, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ollama:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen2.5:3b\",\n  \"prompt\": \"Classify lead request into JSON with keys (intent, urgency, budget_estimate, language, summary, next_action): \" + $json.message,\n  \"format\": \"json\",\n  \"stream\": false\n}"
+      },
+      "id": "10000000-0000-0000-0000-000000000005",
+      "name": "Ollama LLM Classifier",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [920, 340]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ JSON.parse($json.response).urgency }}",
+              "value2": "high"
+            }
+          ]
+        }
+      },
+      "id": "10000000-0000-0000-0000-000000000006",
+      "name": "Urgency Branch Router",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1160, 340]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_MANAGER_CHAT_ID }}",
+        "text": "=🚨 *HIGH-PRIORITY LEAD DETECTED*\n\n*Name:* {{ $('Normalize Payload').item.json.name }}\n*Intent:* {{ JSON.parse($json.response).intent }}\n*Budget:* {{ JSON.parse($json.response).budget_estimate || 'Not specified' }}\n*Language:* {{ JSON.parse($json.response).language }}\n*Summary:* {{ JSON.parse($json.response).summary }}\n*Source:* {{ $('Normalize Payload').item.json.source }}\n*Action:* {{ JSON.parse($json.response).next_action }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "10000000-0000-0000-0000-000000000007",
+      "name": "Telegram Urgent Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1400, 240]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {"__rl": true, "value": "sheetDocPlaceholder", "mode": "id"},
+        "sheetName": {"__rl": true, "value": "ExecutionLogs", "mode": "name"},
+        "fieldsUi": {
+          "fieldValues": [
+            {"fieldId": "LeadID", "fieldValue": "={{ $('Normalize Payload').item.json.lead_id }}"},
+            {"fieldId": "Status", "fieldValue": "SUCCESS"},
+            {"fieldId": "Urgency", "fieldValue": "={{ JSON.parse($json.response).urgency }}"},
+            {"fieldId": "Timestamp", "fieldValue": "={{ $('Normalize Payload').item.json.received_at }}"}
+          ]
+        }
+      },
+      "id": "10000000-0000-0000-0000-000000000008",
+      "name": "Google Sheets Run Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1640, 340]
+    }
+  ],
+  "connections": {
+    "Webhook Form Trigger": {
+      "main": [[{"node": "Normalize Payload", "type": "main", "index": 0}]]
+    },
+    "Telegram Inbound Trigger": {
+      "main": [[{"node": "Normalize Payload", "type": "main", "index": 0}]]
+    },
+    "Normalize Payload": {
+      "main": [[{"node": "Airtable Deduplication Search", "type": "main", "index": 0}]]
+    },
+    "Airtable Deduplication Search": {
+      "main": [[{"node": "Ollama LLM Classifier", "type": "main", "index": 0}]]
+    },
+    "Ollama LLM Classifier": {
+      "main": [[{"node": "Urgency Branch Router", "type": "main", "index": 0}]]
+    },
+    "Urgency Branch Router": {
+      "main": [
+        [{"node": "Telegram Urgent Alert", "type": "main", "index": 0}],
+        [{"node": "Google Sheets Run Log", "type": "main", "index": 0}]
+      ]
+    },
+    "Telegram Urgent Alert": {
+      "main": [[{"node": "Google Sheets Run Log", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  }
+}

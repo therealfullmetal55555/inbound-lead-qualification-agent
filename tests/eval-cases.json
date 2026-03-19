@@ -1,0 +1,52 @@
+[
+  {
+    "id": "T01",
+    "message": "Hi, our warehouse goes live in 10 days. We need HubSpot lead routing automated this week. Budget is €8,000. Can someone call me today?",
+    "expected": {"intent": "sales_inquiry", "urgency": "high", "budget_estimate": "€8,000", "language": "en"}
+  },
+  {
+    "id": "T02",
+    "message": "Tere! Soovime hinnapakkumist, et ühendada meie veebivormid HubSpotiga järgmise kvartali jooksul. Eelarve on 3 000–5 000 eurot.",
+    "expected": {"intent": "sales_inquiry", "urgency": "medium", "budget_estimate": "€3,000–€5,000", "language": "et"}
+  },
+  {
+    "id": "T03",
+    "message": "Здравствуйте! Просто сравниваем варианты CRM и пока ничего внедрять не планируем. Расскажите, пожалуйста, что умеет ваша система.",
+    "expected": {"intent": "sales_inquiry", "urgency": "low", "budget_estimate": null, "language": "ru"}
+  },
+  {
+    "id": "T04",
+    "message": "Our CRM sync has stopped and sales reps haven't received leads for two hours. Please help restore it ASAP.",
+    "expected": {"intent": "support", "urgency": "high", "budget_estimate": null, "language": "en"}
+  },
+  {
+    "id": "T05",
+    "message": "We were charged twice for last month's subscription. Could you check the invoice and let us know what happened?",
+    "expected": {"intent": "billing", "urgency": "medium", "budget_estimate": null, "language": "en"}
+  },
+  {
+    "id": "T06",
+    "message": "We are a small analytics consultancy and would like to explore a referral partnership. No rush; let me know if this is of interest.",
+    "expected": {"intent": "partnership", "urgency": "low", "budget_estimate": null, "language": "en"}
+  },
+  {
+    "id": "T07",
+    "message": "Hello, I am applying for a junior automation role. I have experience with Python and Telegram bots. Please find my CV attached.",
+    "expected": {"intent": "job_application", "urgency": "low", "budget_estimate": null, "language": "en"}
+  },
+  {
+    "id": "T08",
+    "message": "🚀 GUARANTEED 10X GROWTH! Buy our secret leads list today. Reply YES NOW!!! Limited offer!!!",
+    "expected": {"intent": "spam", "urgency": "low", "budget_estimate": null, "language": "en"}
+  },
+  {
+    "id": "T09",
+    "message": "Привет, у нас запуск в пятницу и лиды не попадают в HubSpot 😬 нужен fix ASAP, budget ~€2k. можете сегодня?",
+    "expected": {"intent": "support", "urgency": "high", "budget_estimate": "€2,000", "language": "ru"}
+  },
+  {
+    "id": "T10",
+    "message": "We need a CRM setup quote. We have two users now and may grow to 30 later. We don't know our budget yet. What would it cost?",
+    "expected": {"intent": "sales_inquiry", "urgency": "medium", "budget_estimate": null, "language": "en"}
+  }
+]
